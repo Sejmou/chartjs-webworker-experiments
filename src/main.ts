@@ -1,7 +1,5 @@
-import Chart from 'chart.js/auto';
-import { getAquisitionsByYear } from './api';
-
-type TrackData = {
+// props contained in the objects from the tracks.json file
+export type TrackData = {
   name: string;
   bpm: number;
   durationMs: number;
@@ -19,28 +17,32 @@ type TrackData = {
 };
 
 (async function () {
-  const data = await getAquisitionsByYear();
-  console.log(data);
-
-  const tracks = await fetch('/tracks.json', {
+  const data = await fetch('/tracks.json', {
     headers: {
       Accept: 'application/json',
     },
   }).then(resp => resp.json() as Promise<TrackData[]>);
-  console.log(tracks);
+  console.log(data);
 
   const canvas = document.getElementsByTagName('canvas')[0];
-  console.log(canvas);
+  const offscreenCanvas = canvas.transferControlToOffscreen();
+  const { width, height } = canvas.getBoundingClientRect();
 
-  new Chart(canvas, {
+  const worker = new Worker(new URL('./worker.ts', import.meta.url), {
+    type: 'module',
+  });
+  const config = {
     type: 'scatter',
     data: {
       datasets: [
         {
           label: 'Tracks',
-          data: tracks.map(t => ({ x: t.danceability, y: t.energy })),
+          data: data.map(t => ({ x: t.danceability, y: t.energy })),
         },
       ],
     },
-  });
+  };
+  worker.postMessage({ canvas: offscreenCanvas, config, width, height }, [
+    offscreenCanvas,
+  ]);
 })();
