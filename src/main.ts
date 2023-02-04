@@ -1,6 +1,9 @@
 import {
+  isClickedPointIdxMessage,
+  isHoveringPointIdxsMessage,
   sendRenderCanvasMessage,
   sendResizeCanvasMessage,
+  WorkerResponse,
 } from './worker-communication';
 
 // props contained in the objects from the tracks.json file
@@ -52,6 +55,14 @@ const throttle = (fn: Function, wait: number = 300) => {
     },
   }).then(resp => resp.json() as Promise<TrackData[]>);
   console.log(data);
+  const groups = data.reduce((acc, track) => {
+    const key = track.key;
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(track);
+    return acc;
+  }, {} as Record<number, TrackData[]>);
 
   const canvas = document.getElementsByTagName('canvas')[0];
   const offscreenCanvas = canvas.transferControlToOffscreen();
@@ -60,15 +71,17 @@ const throttle = (fn: Function, wait: number = 300) => {
   const worker = new Worker(new URL('./worker.ts', import.meta.url), {
     type: 'module',
   });
+  const datasets = Object.entries(groups).map(([key, tracks]) => ({
+    label: getKey(Number(key) as keyof typeof keyMap),
+    data: tracks.map(track => ({
+      x: track.energy,
+      y: track.valence,
+    })),
+  }));
   const chartConfig = {
     type: 'scatter',
     data: {
-      datasets: [
-        {
-          label: 'Tracks',
-          data: data.map(t => ({ x: t.danceability, y: t.energy })),
-        },
-      ],
+      datasets,
     },
   };
   sendRenderCanvasMessage(
@@ -94,4 +107,47 @@ const throttle = (fn: Function, wait: number = 300) => {
       worker.postMessage({ type: 'canvas-hover', x, y });
     })
   );
+
+  worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+    if (isClickedPointIdxMessage(event.data)) {
+      const { pointIdx } = event.data;
+      const dataset = datasets[pointIdx.datasetIdx];
+      const matchingTrack = dataset.data[pointIdx.dataIdx];
+      console.log('clicked track', matchingTrack);
+    } else if (isHoveringPointIdxsMessage(event.data)) {
+      const { pointIdxs } = event.data;
+      console.log(
+        pointIdxs.forEach(d => {
+          const dataset = datasets[d.datasetIdx];
+          const matchingTracks = dataset.data.filter((_, i) =>
+            d.dataIdxs.includes(i)
+          );
+          if (matchingTracks.length === 0) return;
+          console.log('tracks in the key of', dataset.label);
+          console.log(matchingTracks);
+        })
+      );
+    }
+  };
 })();
+
+const keyMap = {
+  0: 'C',
+  1: 'C♯/D♭',
+  2: 'D',
+  3: 'D♯/E♭',
+  4: 'E',
+  5: 'F',
+  6: 'F♯/G♭',
+  7: 'G',
+  8: 'G♯/A♭',
+  9: 'A',
+  10: 'A♯/B♭',
+  11: 'B',
+};
+
+function getKey(key: keyof typeof keyMap) {
+  return keyMap[key];
+  // const keySignature = keyMap[key];
+  // return mode === 1 ? keySignature : `${keySignature}m`;
+}

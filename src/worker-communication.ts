@@ -1,3 +1,5 @@
+// Messages to worker (from UI thread):
+
 export type RenderCanvasMessage = {
   type: 'create-canvas';
   canvas: OffscreenCanvas;
@@ -96,4 +98,50 @@ export const sendCanvasHoverMessage = (
     ...payload,
   };
   worker.postMessage(message);
+};
+
+// Messages from worker (to UI thread):
+
+export type HoveringPointIdxsMessage = {
+  type: 'hovering-points';
+  pointIdxs: { dataIdxs: number[]; datasetIdx: number }[];
+};
+
+export type ClickedPointIdxMessage = {
+  type: 'clicked-point';
+  pointIdx: { dataIdx: number; datasetIdx: number };
+};
+
+export const sendHoveringPointIdxsMessage = (
+  payload: Omit<HoveringPointIdxsMessage, 'type'>
+) => {
+  const message = {
+    type: 'hovering-points',
+    ...payload,
+  };
+  self.postMessage(message);
+};
+
+export const sendClickedPointIdxMessage = (
+  payload: Omit<ClickedPointIdxMessage, 'type'>
+) => {
+  const message = {
+    type: 'clicked-point',
+    ...payload,
+  };
+  self.postMessage(message);
+};
+
+export type WorkerResponse = HoveringPointIdxsMessage | ClickedPointIdxMessage;
+
+export const isHoveringPointIdxsMessage = (
+  message: WorkerResponse
+): message is HoveringPointIdxsMessage => {
+  return message.type === 'hovering-points';
+};
+
+export const isClickedPointIdxMessage = (
+  message: WorkerResponse
+): message is ClickedPointIdxMessage => {
+  return message.type === 'clicked-point';
 };

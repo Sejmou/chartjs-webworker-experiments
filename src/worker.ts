@@ -4,6 +4,7 @@ import {
   isCanvasHoverMessage,
   isRenderCanvasMessage,
   isResizeCanvasMessage,
+  sendHoveringPointIdxsMessage,
   WorkerMessage,
 } from './worker-communication';
 
@@ -55,6 +56,7 @@ addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
       x: number;
       y: number;
     }[][];
+    console.log('_metasets', (chart as any)._metasets);
     console.log('pixel positions', pixelPositions);
     const datasetInfo = (chart as any)._metasets.map(
       (meta: any, i: number) => ({
@@ -71,16 +73,19 @@ addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
       datasetIdx: number;
     }[];
     console.log('dataset info', datasetInfo);
-    const allDataPointsFlat = datasetInfo.flatMap(d =>
-      d.data.map(p => ({ ...p, datasetIdx: d.datasetIdx }))
-    );
-    const nearbyPoints = getIdxOfPointsWithinMaxDistance({
-      points: allDataPointsFlat,
-      referencePoint: { x, y },
-      metric: 'euclidean',
-      maxDist: 10,
+    const nearbyPointsPerDataset = datasetInfo.map(d => ({
+      dataIdxs: getIdxOfPointsWithinMaxDistance({
+        points: d.data,
+        referencePoint: { x, y },
+        metric: 'euclidean',
+        maxDist: 5,
+      }),
+      datasetIdx: d.datasetIdx,
+    }));
+    console.log(nearbyPointsPerDataset);
+    sendHoveringPointIdxsMessage({
+      pointIdxs: nearbyPointsPerDataset,
     });
-    console.log(nearbyPoints);
   }
 });
 
