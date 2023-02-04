@@ -1,3 +1,8 @@
+import {
+  sendRenderCanvasMessage,
+  sendResizeCanvasMessage,
+} from './worker-communication';
+
 // props contained in the objects from the tracks.json file
 export type TrackData = {
   name: string;
@@ -31,7 +36,7 @@ export type TrackData = {
   const worker = new Worker(new URL('./worker.ts', import.meta.url), {
     type: 'module',
   });
-  const config = {
+  const chartConfig = {
     type: 'scatter',
     data: {
       datasets: [
@@ -42,7 +47,13 @@ export type TrackData = {
       ],
     },
   };
-  worker.postMessage({ canvas: offscreenCanvas, config, width, height }, [
-    offscreenCanvas,
-  ]);
+  sendRenderCanvasMessage(
+    { canvas: offscreenCanvas, chartConfig, width, height },
+    worker
+  );
+
+  window.addEventListener('resize', () => {
+    const { width, height } = canvas.getBoundingClientRect();
+    sendResizeCanvasMessage({ width, height }, worker);
+  });
 })();
