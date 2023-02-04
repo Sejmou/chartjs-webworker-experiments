@@ -1,5 +1,7 @@
 import { Chart } from 'chart.js/auto';
 import {
+  isCanvasClickMessage,
+  isCanvasHoverMessage,
   isRenderCanvasMessage,
   isResizeCanvasMessage,
   WorkerMessage,
@@ -10,7 +12,6 @@ let chart: Chart;
 addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
   console.log(event.data);
   console.log(event);
-  console.log(isRenderCanvasMessage(event.data));
   if (isRenderCanvasMessage(event.data)) {
     const { canvas, chartConfig, width, height } = event.data;
     canvas.width = width;
@@ -31,5 +32,11 @@ addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
     const config = chart.config;
     chart.destroy();
     chart = new Chart(canvas, config);
+  } else if (isCanvasClickMessage(event.data)) {
+    const { x, y } = event.data;
+    console.log(x, y);
+  } else if (isCanvasHoverMessage(event.data)) {
+    const { x, y } = event.data;
+    console.log(x, y);
   }
 });

@@ -12,7 +12,23 @@ export type ResizeCanvasMessage = {
   height: number;
 };
 
-export type WorkerMessage = RenderCanvasMessage | ResizeCanvasMessage;
+export type CanvasClickMessage = {
+  type: 'canvas-click';
+  x: number;
+  y: number;
+};
+
+export type CanvasHoverMessage = {
+  type: 'canvas-hover';
+  x: number;
+  y: number;
+};
+
+export type WorkerMessage =
+  | RenderCanvasMessage
+  | ResizeCanvasMessage
+  | CanvasClickMessage
+  | CanvasHoverMessage;
 
 export const isRenderCanvasMessage = (
   message: WorkerMessage
@@ -24,6 +40,18 @@ export const isResizeCanvasMessage = (
   message: WorkerMessage
 ): message is ResizeCanvasMessage => {
   return message.type === 'resize-canvas';
+};
+
+export const isCanvasClickMessage = (
+  message: WorkerMessage
+): message is CanvasClickMessage => {
+  return message.type === 'canvas-click';
+};
+
+export const isCanvasHoverMessage = (
+  message: WorkerMessage
+): message is CanvasHoverMessage => {
+  return message.type === 'canvas-hover';
 };
 
 export const sendRenderCanvasMessage = (
@@ -43,6 +71,28 @@ export const sendResizeCanvasMessage = (
 ) => {
   const message = {
     type: 'resize-canvas',
+    ...payload,
+  };
+  worker.postMessage(message);
+};
+
+export const sendCanvasClickMessage = (
+  payload: Omit<CanvasClickMessage, 'type'>,
+  worker: Worker
+) => {
+  const message = {
+    type: 'canvas-click',
+    ...payload,
+  };
+  worker.postMessage(message);
+};
+
+export const sendCanvasHoverMessage = (
+  payload: Omit<CanvasHoverMessage, 'type'>,
+  worker: Worker
+) => {
+  const message = {
+    type: 'canvas-hover',
     ...payload,
   };
   worker.postMessage(message);
