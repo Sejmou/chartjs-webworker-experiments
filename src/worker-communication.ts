@@ -104,12 +104,12 @@ export const sendCanvasHoverMessage = (
 
 export type HoveringPointIdxsMessage = {
   type: 'hovering-points';
-  pointIdxs: { dataIdxs: number[]; datasetIdx: number }[];
+  pointIdxsData: { dataIdxs: number[]; datasetIdx: number }[];
 };
 
 export type ClickedPointIdxMessage = {
   type: 'clicked-point';
-  pointIdx: { dataIdx: number; datasetIdx: number };
+  pointIdxData: { dataIdx: number; datasetIdx: number };
 };
 
 export const sendHoveringPointIdxsMessage = (

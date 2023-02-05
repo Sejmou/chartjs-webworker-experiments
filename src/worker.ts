@@ -4,6 +4,7 @@ import {
   isCanvasHoverMessage,
   isRenderCanvasMessage,
   isResizeCanvasMessage,
+  sendClickedPointIdxMessage,
   sendHoveringPointIdxsMessage,
   WorkerMessage,
 } from './worker-communication';
@@ -36,58 +37,80 @@ addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
   } else if (isCanvasClickMessage(event.data)) {
     const { x, y } = event.data;
     console.log(x, y);
+    const clickedPoints = findNearbyPointsPerChartDataset(
+      event.data,
+      chart
+    ).flatMap(d => d.dataIdxs.map(idx => ({ datasetIdx: d.datasetIdx, idx })));
+    if (clickedPoints.length == 1) {
+      const clickedPoint = clickedPoints[0];
+      sendClickedPointIdxMessage({
+        pointIdxData: {
+          dataIdx: clickedPoint.idx,
+          datasetIdx: clickedPoint.datasetIdx,
+        },
+      });
+    }
   } else if (isCanvasHoverMessage(event.data)) {
     const { x, y } = event.data;
     console.log(x, y);
-    // chart.getElementsAtEventForMode( // doesn't work because of missing DOM access
-    //   { x, y } as MouseEvent,
-    //   'nearest',
-    //   { intersect: true },
-    //   true
-    // );
-    // console.log(chart.getSortedVisibleDatasetMetas()); // also doesn't work
-    const datasets = chart.data.datasets;
-    console.log(datasets);
-
-    // casting to any here because no typefs exist for those private properties
-    const pixelPositions = (chart as any)._metasets
-      .map((meta: any) => meta.data)
-      .map((d: any) => d.map((data: any) => ({ x: data.x, y: data.y }))) as {
-      x: number;
-      y: number;
-    }[][];
-    console.log('_metasets', (chart as any)._metasets);
-    console.log('pixel positions', pixelPositions);
-    const datasetInfo = (chart as any)._metasets.map(
-      (meta: any, i: number) => ({
-        data: meta.data.map((d: any, j: number) => ({
-          x: d.x,
-          y: d.y,
-          dataX: pixelPositions[i][j].x,
-          dataY: pixelPositions[i][j].y,
-        })),
-        datasetIdx: i,
-      })
-    ) as {
-      data: { x: number; y: number; dataX: number; dataY: number }[];
-      datasetIdx: number;
-    }[];
-    console.log('dataset info', datasetInfo);
-    const nearbyPointsPerDataset = datasetInfo.map(d => ({
-      dataIdxs: getIdxOfPointsWithinMaxDistance({
-        points: d.data,
-        referencePoint: { x, y },
-        metric: 'euclidean',
-        maxDist: 5,
-      }),
-      datasetIdx: d.datasetIdx,
-    }));
+    const nearbyPointsPerDataset = findNearbyPointsPerChartDataset(
+      event.data,
+      chart
+    );
     console.log(nearbyPointsPerDataset);
     sendHoveringPointIdxsMessage({
-      pointIdxs: nearbyPointsPerDataset,
+      pointIdxsData: nearbyPointsPerDataset,
     });
   }
 });
+
+function findNearbyPointsPerChartDataset(
+  pointInCanvasPixels: { x: number; y: number },
+  chart: Chart
+) {
+  // chart.getElementsAtEventForMode( // doesn't work because of missing DOM access
+  //   { x, y } as MouseEvent,
+  //   'nearest',
+  //   { intersect: true },
+  //   true
+  // );
+  // console.log(chart.getSortedVisibleDatasetMetas()); // also doesn't work
+  // const datasets = chart.data.datasets;
+  // console.log(datasets);
+
+  // console.log('_metasets', (chart as any)._metasets);
+  // casting to any here because no typefs exist for those private properties
+  const pixelPositions = (chart as any)._metasets
+    .map((meta: any) => meta.data)
+    .map((d: any) => d.map((data: any) => ({ x: data.x, y: data.y }))) as {
+    x: number;
+    y: number;
+  }[][];
+  // console.log('pixel positions', pixelPositions);
+  const datasetInfo = (chart as any)._metasets.map((meta: any, i: number) => ({
+    data: meta.data.map((d: any, j: number) => ({
+      x: d.x,
+      y: d.y,
+      dataX: pixelPositions[i][j].x,
+      dataY: pixelPositions[i][j].y,
+    })),
+    datasetIdx: i,
+  })) as {
+    data: { x: number; y: number; dataX: number; dataY: number }[];
+    datasetIdx: number;
+  }[];
+  // console.log('dataset info', datasetInfo);
+  const nearbyPointsPerDataset = datasetInfo.map(d => ({
+    dataIdxs: getIdxOfPointsWithinMaxDistance({
+      points: d.data,
+      referencePoint: pointInCanvasPixels,
+      metric: 'euclidean',
+      maxDist: 5,
+    }),
+    datasetIdx: d.datasetIdx,
+  }));
+  return nearbyPointsPerDataset;
+}
 
 function getIdxOfPointsWithinMaxDistance<
   T extends { x: number; y: number }

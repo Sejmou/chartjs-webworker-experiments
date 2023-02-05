@@ -110,14 +110,14 @@ const throttle = (fn: Function, wait: number = 300) => {
 
   worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
     if (isClickedPointIdxMessage(event.data)) {
-      const { pointIdx } = event.data;
-      const dataset = datasets[pointIdx.datasetIdx];
-      const matchingTrack = dataset.data[pointIdx.dataIdx];
+      const { pointIdxData } = event.data;
+      const dataset = datasets[pointIdxData.datasetIdx];
+      const matchingTrack = dataset.data[pointIdxData.dataIdx];
       console.log('clicked track', matchingTrack);
     } else if (isHoveringPointIdxsMessage(event.data)) {
-      const { pointIdxs } = event.data;
+      const { pointIdxsData } = event.data;
       console.log(
-        pointIdxs.forEach(d => {
+        pointIdxsData.forEach(d => {
           const dataset = datasets[d.datasetIdx];
           const matchingTracks = dataset.data.filter((_, i) =>
             d.dataIdxs.includes(i)
@@ -127,6 +127,11 @@ const throttle = (fn: Function, wait: number = 300) => {
           console.log(matchingTracks);
         })
       );
+    } else if (isClickedPointIdxMessage(event.data)) {
+      const { pointIdxData } = event.data;
+      const dataset = datasets[(pointIdxData as any).datasetIdx];
+      const matchingTrack = dataset.data[(pointIdxData as any).dataIdx];
+      console.log('clicked track', matchingTrack);
     }
   };
 })();
